@@ -7,9 +7,9 @@ export default function Header() {
   const navItems = [
     { name: "Upload", path: "/" },
     { name: "Search", path: "/search" },
-    { name: "Analytics", path: "/analytics" },
+    { name: "Data", path: "/data" },
     { name: "About Us", path: "/about" },
-
+    { name: "Analytics", path: "/analytics" }, // ✅ New public data tab
   ];
 
   return (
@@ -17,15 +17,14 @@ export default function Header() {
       <div className="max-w-7xl mx-auto flex flex-col items-center sm:flex-row sm:justify-between">
         {/* Logo */}
         <div className="flex items-center text-white text-2xl font-bold tracking-wider mb-2 sm:mb-0">
-           FileHub <span className="text-fuchsia-400 ml-1"></span>
+          Fylshare <span className="text-fuchsia-400 ml-1"></span>
         </div>
 
         {/* Navigation */}
         <nav className="flex space-x-6 text-white text-sm sm:text-base font-semibold">
           {navItems.map((item) => (
             <Link
-              key={item.name}gcloud storage buckets list
-
+              key={item.name}
               to={item.path}
               className={`hover:text-fuchsia-400 transition ${
                 location.pathname === item.path ? "text-fuchsia-500" : ""

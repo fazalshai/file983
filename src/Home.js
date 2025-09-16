@@ -3,7 +3,8 @@ import { useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import Toast from "./Toast";
 import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
-import { storage } from "./firebase";
+import { storage, analytics } from "./firebase"; // added analytics import
+import { logEvent } from "firebase/analytics"; // import logEvent
 
 export default function Home() {
   const [name, setName] = useState("");
@@ -17,12 +18,14 @@ export default function Home() {
   const [showRightBanner, setShowRightBanner] = useState(true);
   const [showBottomBanner, setShowBottomBanner] = useState(true);
 
-  const MAX_TOTAL_SIZE = 100 * 1024 * 1024;
+  // Changed from 100MB to 1GB (1024 MB)
+  const MAX_TOTAL_SIZE = 1024 * 1024 * 1024;
 
   const onDrop = (acceptedFiles) => {
     const totalSize = acceptedFiles.reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_TOTAL_SIZE) {
-      triggerToast("❌ Total upload limit is 100MB", "error");
+      // Updated error message
+      triggerToast("❌ Total upload limit is 1GB", "error");
       return;
     }
     setFiles(acceptedFiles);
@@ -35,10 +38,13 @@ export default function Home() {
     accept: { "*/*": [] },
   });
 
-  const triggerToast = (message, type = "info") => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
-  };
+  // UPDATED: toast with configurable duration (default 15s)
+  // UPDATED: keep duration in toast state so we can pass it down
+const triggerToast = (message, type = "info", duration = 15000) => {
+  setToast({ message, type, duration });
+  setTimeout(() => setToast(null), duration); // you can keep this if you like
+};
+
 
   const handleSubmit = async () => {
     if (name.trim() === "" || files.length === 0) {
@@ -47,7 +53,8 @@ export default function Home() {
     }
     const totalSize = files.reduce((sum, file) => sum + file.size, 0);
     if (totalSize > MAX_TOTAL_SIZE) {
-      triggerToast("❌ Total size exceeds 100MB", "error");
+      // Updated error message
+      triggerToast("❌ Total size exceeds 1GB", "error");
       return;
     }
     const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -97,8 +104,16 @@ export default function Home() {
 
       const result = await res.json();
       if (res.ok) {
-        await navigator.clipboard.writeText(code);
-        triggerToast(`✅ Upload successful! Code copied: ${code}`, "success");
+        // Log upload event to Firebase Analytics here:
+        logEvent(analytics, "file_upload", {
+          file_count: files.length,
+          total_size_mb: (totalSize / 1024 / 1024).toFixed(2),
+          uploader_name: name,
+        });
+
+        // REMOVED: navigator.clipboard.writeText(code) to avoid Allow/Block prompt
+        // Show the code in the toast for ~15s
+        triggerToast(`✅ Upload successful! Your code: ${code}`, "success", 15000);
         setFiles([]);
         setName("");
       } else {
@@ -183,18 +198,27 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Toast */}
-      <div className="fixed top-24 right-6 z-40">
-        <AnimatePresence>
-          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-        </AnimatePresence>
-      </div>
+    
+     {/* Toast */}
+<div className="fixed top-24 right-6 z-40">
+  <AnimatePresence>
+    {toast && (
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        durationMs={toast.duration || 15000}   // show up to 15s
+        onClose={() => setToast(null)}
+      />
+    )}
+  </AnimatePresence>
+</div>
+
 
       {/* Top Banner */}
       {showTopBanner && (
         <CloseableBanner onClose={() => setShowTopBanner(false)}>
           <div className="flex items-center justify-between text-white px-4 py-2 font-semibold text-center text-sm uppercase max-w-7xl mx-auto">
-            <div>ADVERTISEMENT</div>
+            ADVERTISEMENT
           </div>
           <div
             className="flex flex-wrap justify-center overflow-hidden md:overflow-x-auto scrollbar-hide no-scrollbar max-w-7xl mx-auto px-2"
@@ -284,7 +308,8 @@ export default function Home() {
                   Drag & drop files here, or click to browse
                 </p>
                 <p className="text-xs text-gray-500">
-                  Any file type — Max total 100MB
+                  {/* Updated display text */}
+                  Any file type — Max total 1GB
                 </p>
 
                 {files.length > 0 && (
